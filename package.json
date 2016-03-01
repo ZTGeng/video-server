@@ -1,0 +1,14 @@
+{
+  "name": "openwebrtc",
+  "version": "1.0.0",
+  "description": "openwebrtc server",
+  "main": "channel_server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "geng",
+  "license": "ISC",
+  "engines": {
+    "node": "4.0.0"
+  }
+}
