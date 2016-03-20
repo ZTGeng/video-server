@@ -5,7 +5,7 @@ var path = require("path");
 var sessions = {};
 var usersInSessionLimit = 2;
 
-var port = process.env.PORT || 8080;
+var port = process.env.PORT || 24679;
 if (process.argv.length == 3) {
     port = process.argv[2];
 }
