@@ -29,7 +29,7 @@ var server = http.createServer(function (request, response) {
     var parts = request.url.split("/");
 
     // handle "client to server" and "server to client"
-    if (parts[1] == "ctos" || parts[1] == "stoc") {
+    if (parts[1] == "ctos" || parts[1] == "stoc" || parts[1] == "kickoff") {
         var sessionId = parts[2];
         var userId = parts[3];
         if (!sessionId || !userId) {
@@ -81,6 +81,8 @@ var server = http.createServer(function (request, response) {
             }
             user.esResponse = response;
 
+            request.on("finish", function () { console.log("on finish"); });
+            request.on("abort", function () { console.log("on abort"); });
             request.on("close", function () {
                 for (var pname in session.users) {
                     if (pname == userId)
@@ -94,7 +96,7 @@ var server = http.createServer(function (request, response) {
                 console.log("users in session " + sessionId + ": " + Object.keys(session.users).length);
             });
 
-        } else { // parts[1] == "ctos"
+        } else if (parts[1] == "ctos") {
             var peerId = parts[4];
             var peer;
             var session = sessions[sessionId];
@@ -117,6 +119,29 @@ var server = http.createServer(function (request, response) {
             headers["Content-Type"] = "text/plain";
             response.writeHead(204, headers);
             response.end();
+        } else { // parts[1] == "kickoff"
+            var session = sessions[sessionId];
+            if (!session) {
+                response.writeHead(400, headers);
+                response.end();
+                return;
+            }
+            var user = session.users[userId];
+            if (user) {
+                if (user.esResponse) {
+                    user.esResponse.write("event:kicked\ndata:data\n\n");
+                    user.esResponse.end();
+                    clearTimeout(user.esResponse.keepAliveTimer);
+                    user.esResponse = null;
+                }
+                delete session.users[userId];
+                for (var pname in session.users) {
+                    var esResp = session.users[pname].esResponse;
+                    esResp.write("event:leave\ndata:" + userId + "\n\n");
+                }
+                console.log("@" + sessionId + " - " + userId + " left.");
+                console.log("users in session " + sessionId + ": " + Object.keys(session.users).length);
+            }
         }
 
         return;
