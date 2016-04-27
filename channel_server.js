@@ -51,14 +51,27 @@ var server = http.createServer(function (request, response) {
 
             var session = sessions[sessionId];
             if (!session)
-                session = sessions[sessionId] = {"users" : {}};
+                session = sessions[sessionId] = {
+                    "users" : {},
+                    "waitingList" : [],
+                    "waitingResp" : [],
+                    "waitingIndex" : 0,
+                    "started" : false
+                };
 
             if (Object.keys(session.users).length > usersInSessionLimit - 1) {
-                console.log("user limit for session reached (" + usersInSessionLimit + ")");
-                response.write("event:busy\ndata:" + sessionId + "\n\n");
-                clearTimeout(response.keepAliveTimer);
-                response.end();
-                return;
+                if (session.started) {
+                    console.log("user limit for session reached (" + usersInSessionLimit + ")");
+                    response.write("event:busy\ndata:" + sessionId + "\n\n");
+                    clearTimeout(response.keepAliveTimer);
+                    response.end();
+                    return;
+                } else {
+                    console.log("Add user " + userId + " into waiting list");
+                    session.waitingList.push(userId);
+                    session.waitingResp.push(response);
+                    return;
+                }
             }
 
             var user = session.users[userId];
@@ -141,9 +154,62 @@ var server = http.createServer(function (request, response) {
                 }
                 console.log("@" + sessionId + " - " + userId + " left.");
                 console.log("users in session " + sessionId + ": " + Object.keys(session.users).length);
+                
+                if (!session.started) {
+                    if (session.waitingIndex < session.waitingList.length) {
+                        var nextUser = session.waitingList[session.waitingIndex];
+                        var nextResp = session.waitingResp[session.waitingIndex++];
+                        var user = session.users[nextUser];
+                        if (!user) {
+                            user = session.users[nextUser] = {};
+                            for (var pname in session.users) {
+                                var esResp = session.users[pname].esResponse;
+                                if (esResp) {
+                                    clearTimeout(esResp.keepAliveTimer);
+                                    keepAlive(esResp);
+                                    esResp.write("event:join\ndata:" + nextUser + "\n\n");
+                                    nextResp.write("event:join\ndata:" + pname + "\n\n");
+                                }
+                            }
+                        } else if (user.esResponse) {
+                            user.esResponse.end();
+                            clearTimeout(user.esResponse.keepAliveTimer);
+                            user.esResponse = null;
+                        }
+                        user.esResponse = nextResp;
+                    }
+                }
             }
         }
 
+        return;
+    } else if (parts[1] == "start") {
+        var sessionId = parts[2];
+        if (!sessionId) {
+            response.writeHead(400);
+            response.end();
+            return;
+        }
+        var session = sessions[sessionId];
+        if (!session) {
+            response.writeHead(400, headers);
+            response.end();
+            return;
+        }
+        console.log("Session " + sessionId + " starts");
+        
+        session.started = true;
+        for (var wResp in waitingResp) {
+            if (wResp) {
+                wResp.write("event:kicked\ndata:data\n\n");
+                wResp.end();
+                clearTimeout(wResp.keepAliveTimer);
+            }
+        }
+        session.waitingList = [];
+        session.waitingResp = [];
+        session.waitingIndex = 0;
+        
         return;
     }
 
