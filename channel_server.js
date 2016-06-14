@@ -28,6 +28,11 @@ var server = http.createServer(function (request, response) {
     };
 
     var parts = request.url.split("/");
+    if (parts.length < 4) {
+        response.writeHead(400);
+        response.end();
+        return;
+    }
     var sessionId = parts[2];
     var userId = parts[3];
     if (!sessionId || !userId) {
@@ -210,6 +215,26 @@ var server = http.createServer(function (request, response) {
                 //         user.esResponse = nextResp;
                 //     }
                 // }
+            } else { // helper kickoff himself
+                user = session.waitingList[userId];
+                if (user) {
+                    var helperResp = session.waitingList[userId];
+                    if (!helperResp) return;
+                    delete session.waitingList[userId];
+                    for (var i = 0; i < session.namelist.length; i++) {
+                        if (session.namelist[i].username === userId) {
+                            session.namelist.splice(i, 1);
+                            break;
+                        }
+                    }
+                    for (var pname in session.users) {
+                        var esResp = session.users[pname].esResponse;
+                        esResp.write("event:refresh\ndata:" + JSON.stringify(session.namelist) + "\n\n");
+                    }
+                    helperResp.end();
+                    clearTimeout(helperResp);
+                    console.log("@" + sessionId + " - " + userId + " quit from waiting list");
+                }
             }
             
             return;
