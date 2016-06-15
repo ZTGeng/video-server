@@ -49,6 +49,7 @@ var server = http.createServer(function (request, response) {
             headers["Content-Type"] = "text/event-stream";
             response.writeHead(200, headers);
             function keepAlive(resp) {
+                if (!resp) return;
                 resp.write(":\n");
                 resp.keepAliveTimer = setTimeout(arguments.callee, 30000, resp);
             }
@@ -223,10 +224,8 @@ var server = http.createServer(function (request, response) {
                 //     }
                 // }
             } else { // helper kickoff himself
-                user = session.waitingList[userId];
-                if (user) {
-                    var helperResp = session.waitingList[userId];
-                    if (!helperResp) return;
+                var helperResp = session.waitingList[userId];
+                if (helperResp) {
                     delete session.waitingList[userId];
                     for (var i = 0; i < session.namelist.length; i++) {
                         if (session.namelist[i].username === userId) {
@@ -239,7 +238,7 @@ var server = http.createServer(function (request, response) {
                         esResp.write("event:refresh\ndata:" + JSON.stringify(session.namelist) + "\n\n");
                     }
                     helperResp.end();
-                    clearTimeout(helperResp);
+                    clearTimeout(helperResp.keepAliveTimer);
                     console.log("@" + sessionId + " - " + userId + " quit from waiting list");
                 }
             }
