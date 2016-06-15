@@ -34,17 +34,17 @@ var server = http.createServer(function (request, response) {
         if (mSession.v) {
             mSession.v.esResponse.write("event:quit\ndata:" + mSession.v.username + "\n\n");
             mSession.v.esResponse.end();
-            clearTimeout(mSession.v.esResponse);
+            clearTimeout(mSession.v.esResponse.keepAliveTimer);
         }
         if (mSession.h) {
             mSession.h.esResponse.write("event:quit\ndata:" + mSession.h.username + "\n\n");
             mSession.h.esResponse.end();
-            clearTimeout(mSession.h.esResponse);
+            clearTimeout(mSession.h.esResponse.keepAliveTimer);
         }
         for (var pname in mSession.waitingList) {
             mSession.waitingList[pname].esResponse.write("event:quit\ndata:" + pname + "\n\n");
             mSession.waitingList[pname].esResponse.end();
-            clearTimeout(mSession.waitingList[pname].esResponse);
+            clearTimeout(mSession.waitingList[pname].esResponse.keepAliveTimer);
         }
         delete sessions[mSessionId];
     }
@@ -269,7 +269,7 @@ var server = http.createServer(function (request, response) {
                 
                 var vResp = session.v.esResponse;
                 var hResp = helper.esResponse;
-                clearTimeout(vResp);
+                clearTimeout(vResp.keepAliveTimer);
                 keepAlive(vResp);
                 vResp.write("event:join\ndata:" + userId + "\n\n");
                 hResp.write("event:join\ndata:" + session.v.username + "\n\n");
