@@ -190,6 +190,7 @@ var server = http.createServer(function (request, response) {
                 }
                 for (var pname in session.waitingList) {
                     var helperResp = session.waitingList[pname];
+                    clearTimeout(helperResp.keepAliveTimer);
                     helperResp.end();
                 }
                 session.waitingList = {};
