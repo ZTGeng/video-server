@@ -188,6 +188,12 @@ var server = http.createServer(function (request, response) {
                     var esResp = session.users[pname].esResponse;
                     esResp.write("event:leave\ndata:" + userId + "\n\n");
                 }
+                for (var pname in session.waitingList) {
+                    var helperResp = session.waitingList[pname];
+                    helperResp.end();
+                }
+                session.waitingList = {};
+                session.namelist = [];
                 console.log("@" + sessionId + " - " + userId + " left.");
                 console.log("users in session " + sessionId + ": " + Object.keys(session.users).length);
                 
