@@ -228,8 +228,12 @@ var server = http.createServer(function (request, response) {
             if (session.v && session.v.username === userId) {
                 console.log("@" + sessionId + " - " + userId + " vi quit.");
                 closeAll(sessionId);
+                response.writeHead(204, headers);
+            } else {
+                response.writeHead(400, headers);
             }
             
+            response.end();
             return;
         case "hquit":
             var session = sessions[sessionId];
@@ -242,6 +246,7 @@ var server = http.createServer(function (request, response) {
             if (session.h && session.h.username === userId && session.started) {
                 console.log("@" + sessionId + " - " + userId + " helper online quit.");
                 closeAll(sessionId);
+                response.writeHead(204, headers);
             } else {
                 if (session.waitingList[userId]) {
                     session.waitingList[userId].esResponse.write("event:quit\ndata:" + userId + "\n\n");
@@ -251,9 +256,13 @@ var server = http.createServer(function (request, response) {
                     if (session.v) {
                         session.v.esResponse.write("event:refresh\ndata:" + JSON.stringify(session.namelist()) + "\n\n");
                     }
+                    response.writeHead(204, headers);
+                } else {
+                    response.writeHead(400, headers);
                 }
             }
             
+            response.end();
             return;
         case "select":
             var session = sessions[sessionId];
@@ -283,8 +292,12 @@ var server = http.createServer(function (request, response) {
                     kill(session.waitingList[pname].esResponse);
                 }
                 session.waitingList = {};
+                response.writeHead(204, headers);
+            } else {
+                response.writeHead(400, headers);
             }
             
+            response.end();
             return;
         default:
             return;
