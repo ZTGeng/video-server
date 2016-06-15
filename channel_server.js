@@ -27,24 +27,27 @@ var server = http.createServer(function (request, response) {
             resp.keepAliveTimer = setTimeout(arguments.callee, 30000, resp);
         }
     }
+    function kill(resp) {
+        if (resp) {
+            clearTimeout(resp.keepAliveTimer);
+            resp.end();
+        }
+    }
     function closeAll(mSessionId) {
         console.log("@" + mSessionId + " - Call closeAll().");
         var mSession = sessions[mSessionId];
         if (!mSession) return;
         if (mSession.v) {
             mSession.v.esResponse.write("event:quit\ndata:" + mSession.v.username + "\n\n");
-            mSession.v.esResponse.end();
-            clearTimeout(mSession.v.esResponse.keepAliveTimer);
+            kill(mSession.v.esResponse);
         }
         if (mSession.h) {
             mSession.h.esResponse.write("event:quit\ndata:" + mSession.h.username + "\n\n");
-            mSession.h.esResponse.end();
-            clearTimeout(mSession.h.esResponse.keepAliveTimer);
+            kill(mSession.h.esResponse);
         }
         for (var pname in mSession.waitingList) {
             mSession.waitingList[pname].esResponse.write("event:quit\ndata:" + pname + "\n\n");
-            mSession.waitingList[pname].esResponse.end();
-            clearTimeout(mSession.waitingList[pname].esResponse.keepAliveTimer);
+            kill(mSession.waitingList[pname].esResponse);
         }
         delete sessions[mSessionId];
     }
@@ -74,7 +77,7 @@ var server = http.createServer(function (request, response) {
             var session = sessions[sessionId];
             if (session && session.v) { // rejoin or wrong room
                 if (session.v.username === userId) { // rejoin
-                    session.v.esResponse.end();
+                    kill(session.v.esResponse);
                     session.v.esResponse = response;
                     keepAlive(response);
                     console.log("@" + sessionId + " - " + userId + " rejoin.");
@@ -242,7 +245,7 @@ var server = http.createServer(function (request, response) {
             } else {
                 if (session.waitingList[userId]) {
                     session.waitingList[userId].esResponse.write("event:quit\ndata:" + userId + "\n\n");
-                    session.waitingList[userId].esResponse.end();
+                    kill(session.waitingList[userId].esResponse);
                     delete session.waitingList[userId];
                     console.log("@" + sessionId + " - " + userId + " helper on list quit.");
                     if (session.v) {
@@ -277,7 +280,7 @@ var server = http.createServer(function (request, response) {
                 delete session.waitingList[userId];
                 for (var pname in session.waitingList) {
                     session.waitingList[pname].esResponse.write("event:quit\ndata:" + pname + "\n\n");
-                    session.waitingList[pname].esResponse.end();
+                    kill(session.waitingList[pname].esResponse);
                 }
                 session.waitingList = {};
             }
