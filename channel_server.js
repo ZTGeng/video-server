@@ -75,19 +75,23 @@ var server = http.createServer(function (request, response) {
             response.writeHead(200, headers);
             
             var session = sessions[sessionId];
+            
             if (session && session.v) { // rejoin or wrong room
                 if (session.v.username === userId) { // rejoin
                     kill(session.v.esResponse);
                     session.v.esResponse = response;
                     keepAlive(response);
                     console.log("@" + sessionId + " - " + userId + " rejoin.");
+                    response.write("event:refresh\ndata:" + JSON.stringify(session.namelist()) + "\n\n");
                 } else {
                     response.write("event:quit\ndata:\n\n");
                     response.end();
                     console.log("@" + sessionId + " - " + userId + " fail to join an occupied session.");
                 }
-                return;
+                return; // !!
             }
+            
+            
             if (!session) { // vi arrive first
                 session = sessions[sessionId] = {
                     users: {},
